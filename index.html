@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChromaLab Pro - v32 Streamlined</title>
+    <title>MOMO ChromaLab Pro - v33 Smart Brush</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,7 +17,6 @@
             --card-bg: #ffffff;
             --text: #334155;
             --border: #cbd5e1;
-            /* Mockup */
             --mockup-bg: #eee;
             --mockup-text: #333;
             --mockup-stroke: #000;
@@ -177,7 +176,7 @@
 
 <div class="container">
     <div class="header-row">
-        <h1>🎨 ChromaLab Pro <span style="font-size:0.75rem; background:#e0e7ff; color:var(--primary); padding:2px 6px; border-radius:4px; margin-left:8px;">v32 Streamlined</span></h1>
+        <h1>🎨 MOMO ChromaLab Pro <span style="font-size:0.75rem; background:#e0e7ff; color:var(--primary); padding:2px 6px; border-radius:4px; margin-left:8px;">v33 Smart Brush</span></h1>
         <button class="btn danger small" id="resetBtn" style="display:none;">🔄 重置專案</button>
     </div>
     
@@ -255,7 +254,8 @@
                 <div id="brushControls" style="display:none; align-items:center; gap:8px;">
                     <div class="tool-group">
                         <label style="font-size:0.75rem;"><input type="radio" name="brushMode" value="restore" checked> 復原</label>
-                        <label style="font-size:0.75rem;"><input type="radio" name="brushMode" value="paint"> 上色</label>
+                        <label style="font-size:0.75rem; margin-left:5px;"><input type="radio" name="brushMode" value="paint"> 平塗</label>
+                        <label style="font-size:0.75rem; margin-left:5px; font-weight:bold; color:var(--primary);"><input type="radio" name="brushMode" value="smart"> 智慧替換</label>
                     </div>
                     <div class="tool-group">
                         <span class="tool-label">大小</span>
@@ -478,7 +478,7 @@
     // --- 4. Brush Logic ---
     function toggleBrushMode() {
         if(isPanMode) togglePanMode();
-        if(isFloodFillActive) toggleFloodFillMode(); // Close flood fill if opening brush
+        if(isFloodFillActive) toggleFloodFillMode(); // Close flood fill
         
         isBrushMode = !isBrushMode;
 
@@ -532,14 +532,13 @@
                 const r = pixel[0]; const g = pixel[1]; const b = pixel[2];
                 const hex = rgbToHex(r, g, b);
                 updateColorInfo(r, g, b, hex);
-                // v29: Tighter Magnifier
                 updateMagnifier(e, coords);
             }
         }
     });
     mainCanvas.addEventListener('mouseup', () => isDrawing = false);
     
-    // Click Behavior (Locks color)
+    // Click Behavior
     mainCanvas.addEventListener('click', (e) => {
         if(isBrushMode || isPanMode || isFloodFillActive) return; 
         const coords = getCanvasCoords(e);
@@ -552,23 +551,88 @@
         addToHistory(hex);
     });
 
+    // v33: Updated performBrush with "Smart" mode
     function performBrush(e) {
         if(!sourceImage) return;
         const coords = getCanvasCoords(e);
         if(!coords) return;
+        
         const size = parseInt(brushSizeSlider.value);
         const radius = size / 2;
         const mode = document.querySelector('input[name="brushMode"]:checked').value;
+        const replaceHex = document.getElementById('replaceColorPicker').value;
+        
+        // Optimize: Draw on a temp canvas or direct pixel manipulation?
+        // Canvas clipping is easiest for circular brush
         ctx.save();
         ctx.beginPath();
         ctx.arc(coords.x, coords.y, radius, 0, Math.PI * 2);
         ctx.clip();
+
         if (mode === 'restore') {
             ctx.drawImage(sourceImage, 0, 0, mainCanvas.width, mainCanvas.height);
-        } else {
-            const hex = document.getElementById('replaceColorPicker').value;
-            ctx.fillStyle = hex;
+        } else if (mode === 'paint') {
+            ctx.fillStyle = replaceHex;
             ctx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
+        } else if (mode === 'smart') {
+            // Smart Brush: Only replace pixels matching target color
+            // This requires pixel manipulation within the brush area
+            // 1. Get image data for the brush bounding box
+            const sx = Math.floor(coords.x - radius);
+            const sy = Math.floor(coords.y - radius);
+            const sw = Math.ceil(size);
+            const sh = Math.ceil(size);
+            
+            // Boundary checks
+            if (sx < 0 || sy < 0 || sx + sw > mainCanvas.width || sy + sh > mainCanvas.height) {
+                // If out of bounds, fallback to slower putImageData or handle edge cases
+                // For simplicity in this demo, we skip edge optimization or just handle what we can
+                // Let's just use the global pixel logic but constrained to the clip
+            }
+            
+            // To implement "Smart Replace" inside a clipped context efficiently without 
+            // massive lag, we can get the current canvas data, modify it, and put it back.
+            // But doing this on every mousemove is heavy.
+            
+            // BETTER APPROACH for "Smart":
+            // We can't easily use ctx.fillStyle for conditional replacement.
+            // We must manipulate pixels.
+            
+            // Temporarily turn off clip, do pixel manipulation manually on the rect
+            ctx.restore(); // Remove clip first to avoid context complexity
+            
+            const targetHex = document.getElementById('targetColorPicker').value;
+            const targetRgb = hexToRgbObj(targetHex);
+            const replaceRgb = hexToRgbObj(replaceHex);
+            const tolerance = parseInt(toleranceSlider.value);
+            const tolSq = tolerance * tolerance; // squared for speed
+
+            // Get current data
+            const imgData = ctx.getImageData(sx, sy, sw, sh);
+            const data = imgData.data;
+            const r2 = radius * radius;
+
+            for (let y = 0; y < sh; y++) {
+                for (let x = 0; x < sw; x++) {
+                    // Check if inside circle
+                    const cx = x - radius;
+                    const cy = y - radius;
+                    if (cx*cx + cy*cy <= r2) {
+                        const i = (y * sw + x) * 4;
+                        // Check color match
+                        const distSq = (data[i] - targetRgb.r)**2 + (data[i+1] - targetRgb.g)**2 + (data[i+2] - targetRgb.b)**2;
+                        
+                        if (distSq <= tolSq) {
+                            // Replace
+                            data[i] = replaceRgb.r;
+                            data[i+1] = replaceRgb.g;
+                            data[i+2] = replaceRgb.b;
+                        }
+                    }
+                }
+            }
+            ctx.putImageData(imgData, sx, sy);
+            return; // Exit early as we handled restore/save manually
         }
         ctx.restore();
     }
@@ -581,7 +645,6 @@
         return { r, g, b };
     }
 
-    // v30: Paste Clipboard Function (Target)
     async function pasteTargetHex() {
         try {
             const text = await navigator.clipboard.readText();
@@ -596,7 +659,6 @@
         } catch (err) { alert('無法存取剪貼簿 (瀏覽器安全限制)。請使用 Ctrl+V 貼上，或確認已授予權限。'); }
     }
 
-    // v31: Paste Clipboard Function (Replace)
     async function pasteReplaceHex() {
         try {
             const text = await navigator.clipboard.readText();
@@ -606,9 +668,7 @@
                 document.getElementById('replaceColorPicker').value = hex;
                 document.getElementById('replaceHexInput').value = hex.toUpperCase();
                 const btn = document.querySelector('button[onclick="pasteReplaceHex()"]');
-                if(btn) {
-                    const orig = btn.innerText; btn.innerText = "✅"; setTimeout(()=>btn.innerText = orig, 1000);
-                }
+                if(btn) { const orig = btn.innerText; btn.innerText = "✅"; setTimeout(()=>btn.innerText = orig, 1000); }
             } else { alert('剪貼簿內容不是有效的 HEX 色碼'); }
         } catch (err) { alert('無法存取剪貼簿 (瀏覽器安全限制)。請使用 Ctrl+V 貼上，或確認已授予權限。'); }
     }
@@ -643,13 +703,11 @@
 
     const floodFillClickHandler = (e) => {
         if(!isFloodFillActive) return;
-        
         const targetHex = document.getElementById('targetColorPicker').value;
         const replaceHex = document.getElementById('replaceColorPicker').value;
         const targetRgb = hexToRgbObj(targetHex);
         const replaceRgb = hexToRgbObj(replaceHex);
         const tolerance = parseInt(toleranceSlider.value);
-        
         const coords = getCanvasCoords(e);
         if(coords) {
             saveCanvasState();
