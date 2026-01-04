@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChromaLab Pro - v28 Perfect Restoration</title>
+    <title>ChromaLab Pro - v32 Streamlined</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -70,7 +70,7 @@
 
         .workspace { display: none; flex-direction: column; gap: 15px; }
         
-        /* --- Compact Workbench Panel (Restored from v26) --- */
+        /* Workbench Panel */
         .workbench-panel {
             background: #f8fafc; border: 1px solid var(--border); border-radius: 12px;
             padding: 12px; display: flex; flex-direction: column; gap: 10px;
@@ -86,7 +86,7 @@
         input[type="text"] { width: 60px; padding: 2px 4px; font-size: 0.8rem; border: 1px solid #cbd5e1; border-radius: 4px; font-family: monospace; text-transform: uppercase; }
         select { padding: 2px 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem; height: 26px; }
 
-        /* Main Grid */
+        /* Grid */
         .main-split-grid { display: grid; grid-template-columns: 1fr 300px; gap: 20px; align-items: start; }
         .left-column-content { display: flex; flex-direction: column; gap: 15px; }
 
@@ -105,6 +105,8 @@
         .canvas-wrapper.pan-mode { cursor: grab !important; }
         .canvas-wrapper.pan-mode:active { cursor: grabbing !important; }
         .canvas-wrapper.brush-mode { cursor: none !important; }
+        .canvas-wrapper.bucket-mode { cursor: cell !important; }
+
         .brush-cursor { position: fixed; pointer-events: none; border-radius: 50%; border: 2px solid rgba(0,0,0,0.5); box-shadow: 0 0 0 1px rgba(255,255,255,0.8); z-index: 9999; display: none; transform: translate(-50%, -50%); }
 
         /* Auto Palette */
@@ -135,7 +137,6 @@
         .value-row:last-child { border-bottom: none; }
         .value-row:hover { color: var(--primary); }
         
-        /* Fixed: Added flex-shrink to prevent swatch collapse */
         .history-list, .saved-list { display: flex; flex-direction: column; gap: 4px; max-height: 120px; overflow-y: auto; }
         .history-item, .saved-item { display: flex; align-items: center; gap: 8px; padding: 4px; border-radius: 4px; cursor: pointer; border: 1px solid transparent; }
         .history-item:hover, .saved-item:hover { background: #f8fafc; border-color: #e2e8f0; }
@@ -148,6 +149,12 @@
         .gradient-box { height: 60px; width: 100%; border-radius: 6px; cursor: pointer; position: relative; background: #eee; border: 1px solid #ddd; margin-top:5px; }
         .gradient-box::after { content: "點擊複製 CSS"; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.5); font-size: 0.8rem; opacity: 0; transition: 0.2s; }
         .gradient-box:hover::after { opacity: 1; }
+
+        .saved-list { max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+        .saved-item { display: flex; align-items: center; justify-content: space-between; padding: 8px; background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; }
+        .saved-info { display: flex; align-items: center; gap: 8px; cursor: pointer; flex: 1; }
+        .saved-swatch { width: 20px; height: 20px; border-radius: 4px; border: 1px solid #ddd; flex-shrink: 0; }
+        .delete-btn { color: #ef4444; cursor: pointer; font-weight: bold; padding: 0 5px; }
 
         .magnifier { position: fixed; pointer-events: none; border: 3px solid #fff; box-shadow: 0 0 0 2px var(--primary), 0 10px 20px rgba(0,0,0,0.2); border-radius: 50%; width: 120px; height: 120px; overflow: hidden; display: none; z-index: 100; background: #fff; }
         .magnifier canvas { width: 100%; height: 100%; image-rendering: pixelated; }
@@ -170,7 +177,7 @@
 
 <div class="container">
     <div class="header-row">
-        <h1>🎨 ChromaLab Pro <span style="font-size:0.75rem; background:#e0e7ff; color:var(--primary); padding:2px 6px; border-radius:4px; margin-left:8px;">v28 Perfect</span></h1>
+        <h1>🎨 ChromaLab Pro <span style="font-size:0.75rem; background:#e0e7ff; color:var(--primary); padding:2px 6px; border-radius:4px; margin-left:8px;">v32 Streamlined</span></h1>
         <button class="btn danger small" id="resetBtn" style="display:none;">🔄 重置專案</button>
     </div>
     
@@ -201,13 +208,14 @@
                     <span class="tool-label">🎯 目標</span>
                     <input type="color" id="targetColorPicker" value="#ffffff">
                     <input type="text" id="targetHexInput" value="#FFFFFF">
-                    <button class="btn small outline" onclick="setTargetFromCurrent()" title="吸取目前顏色">⬇️</button>
+                    <button class="btn small outline" onclick="pasteTargetHex()" title="從剪貼簿貼上色碼">📋</button>
                 </div>
                 <span style="color:#94a3b8;">➜</span>
                 <div class="tool-group">
                     <span class="tool-label">🎨 替換</span>
                     <input type="color" id="replaceColorPicker" value="#ff0000">
                     <input type="text" id="replaceHexInput" value="#FF0000">
+                    <button class="btn small outline" onclick="pasteReplaceHex()" title="從剪貼簿貼上色碼">📋</button>
                 </div>
 
                 <div class="panel-divider"></div>
@@ -260,7 +268,7 @@
             <div class="panel-row" style="background:transparent; border:none; padding:0; box-shadow:none;">
                 <button class="btn warning" id="undoBtn" onclick="undoLastAction()" disabled>↩️ 復原</button>
                 <div class="panel-divider"></div>
-                <button class="btn magic" onclick="applyColorModification('replace')">🔄 替換</button>
+                <button class="btn magic" id="replaceBtn" onclick="handleReplaceAction()">🔄 替換</button>
                 <button class="btn outline" onclick="applyColorModification('transparent')">✨ 去背</button>
                 <button class="btn" id="compareBtn" style="background:#475569;">👁️ 按住比對</button>
                 <div class="panel-divider"></div>
@@ -368,6 +376,7 @@
     const compareBtn = document.getElementById('compareBtn');
     const contiguousCheck = document.getElementById('contiguousCheck');
     const mockupBox = document.getElementById('mockupBox'); 
+    const replaceBtn = document.getElementById('replaceBtn'); 
     
     // Values
     const strokeSlider = document.getElementById('strokeSlider');
@@ -399,9 +408,16 @@
     let isBrushMode = false;
     let isDrawing = false;
     let sourceImage = null; 
+    
+    let isFloodFillActive = false;
 
     // Initialize
-    window.addEventListener('DOMContentLoaded', () => { loadSavedColors(); });
+    window.addEventListener('DOMContentLoaded', () => {
+        loadSavedColors();
+        const magCtx = document.getElementById('magCanvas').getContext('2d');
+        magCtx.imageSmoothingEnabled = false; 
+    });
+    
     document.getElementById('magCanvas').width = 120;
     document.getElementById('magCanvas').height = 120;
 
@@ -462,6 +478,8 @@
     // --- 4. Brush Logic ---
     function toggleBrushMode() {
         if(isPanMode) togglePanMode();
+        if(isFloodFillActive) toggleFloodFillMode(); // Close flood fill if opening brush
+        
         isBrushMode = !isBrushMode;
 
         if(isBrushMode) {
@@ -505,16 +523,25 @@
     });
     mainCanvas.addEventListener('mousemove', (e) => {
         if(isBrushMode && isDrawing) performBrush(e);
-        if(!isBrushMode && !isPanMode) {
+        
+        // Live Monitor
+        if(!isBrushMode && !isPanMode && !isFloodFillActive) {
             const coords = getCanvasCoords(e);
-            if(coords) updateMagnifier(e, coords);
+            if(coords) {
+                const pixel = ctx.getImageData(coords.x, coords.y, 1, 1).data;
+                const r = pixel[0]; const g = pixel[1]; const b = pixel[2];
+                const hex = rgbToHex(r, g, b);
+                updateColorInfo(r, g, b, hex);
+                // v29: Tighter Magnifier
+                updateMagnifier(e, coords);
+            }
         }
     });
     mainCanvas.addEventListener('mouseup', () => isDrawing = false);
     
-    // Click Behavior
+    // Click Behavior (Locks color)
     mainCanvas.addEventListener('click', (e) => {
-        if(isBrushMode || isPanMode) return; 
+        if(isBrushMode || isPanMode || isFloodFillActive) return; 
         const coords = getCanvasCoords(e);
         if(!coords) return;
         const pixel = ctx.getImageData(coords.x, coords.y, 1, 1).data;
@@ -554,6 +581,82 @@
         return { r, g, b };
     }
 
+    // v30: Paste Clipboard Function (Target)
+    async function pasteTargetHex() {
+        try {
+            const text = await navigator.clipboard.readText();
+            const cleanText = text.trim().replace('#', '');
+            if (/^[0-9A-Fa-f]{6}$/.test(cleanText)) {
+                const hex = '#' + cleanText;
+                document.getElementById('targetColorPicker').value = hex;
+                document.getElementById('targetHexInput').value = hex.toUpperCase();
+                const btn = document.querySelector('button[title="從剪貼簿貼上色碼"]');
+                const orig = btn.innerText; btn.innerText = "✅"; setTimeout(()=>btn.innerText = orig, 1000);
+            } else { alert('剪貼簿內容不是有效的 HEX 色碼'); }
+        } catch (err) { alert('無法存取剪貼簿 (瀏覽器安全限制)。請使用 Ctrl+V 貼上，或確認已授予權限。'); }
+    }
+
+    // v31: Paste Clipboard Function (Replace)
+    async function pasteReplaceHex() {
+        try {
+            const text = await navigator.clipboard.readText();
+            const cleanText = text.trim().replace('#', '');
+            if (/^[0-9A-Fa-f]{6}$/.test(cleanText)) {
+                const hex = '#' + cleanText;
+                document.getElementById('replaceColorPicker').value = hex;
+                document.getElementById('replaceHexInput').value = hex.toUpperCase();
+                const btn = document.querySelector('button[onclick="pasteReplaceHex()"]');
+                if(btn) {
+                    const orig = btn.innerText; btn.innerText = "✅"; setTimeout(()=>btn.innerText = orig, 1000);
+                }
+            } else { alert('剪貼簿內容不是有效的 HEX 色碼'); }
+        } catch (err) { alert('無法存取剪貼簿 (瀏覽器安全限制)。請使用 Ctrl+V 貼上，或確認已授予權限。'); }
+    }
+
+    function handleReplaceAction() {
+        if (!originalImageData) return;
+        if (contiguousCheck.checked) {
+            toggleFloodFillMode();
+        } else {
+            applyColorModification('replace');
+        }
+    }
+
+    function toggleFloodFillMode() {
+        isFloodFillActive = !isFloodFillActive;
+        if(isFloodFillActive) {
+            if(isBrushMode) toggleBrushMode(); 
+            if(isPanMode) togglePanMode(); 
+            
+            replaceBtn.innerText = "🛑 停止填色";
+            replaceBtn.classList.add('danger'); replaceBtn.classList.remove('magic');
+            canvasWrapper.classList.add('bucket-mode');
+            
+            mainCanvas.addEventListener('click', floodFillClickHandler);
+        } else {
+            replaceBtn.innerText = "🔄 替換";
+            replaceBtn.classList.remove('danger'); replaceBtn.classList.add('magic');
+            canvasWrapper.classList.remove('bucket-mode');
+            mainCanvas.removeEventListener('click', floodFillClickHandler);
+        }
+    }
+
+    const floodFillClickHandler = (e) => {
+        if(!isFloodFillActive) return;
+        
+        const targetHex = document.getElementById('targetColorPicker').value;
+        const replaceHex = document.getElementById('replaceColorPicker').value;
+        const targetRgb = hexToRgbObj(targetHex);
+        const replaceRgb = hexToRgbObj(replaceHex);
+        const tolerance = parseInt(toleranceSlider.value);
+        
+        const coords = getCanvasCoords(e);
+        if(coords) {
+            saveCanvasState();
+            floodFill(coords.x, coords.y, targetRgb, replaceRgb, tolerance);
+        }
+    };
+
     function applyColorModification(mode) {
         if (!originalImageData) return;
         saveCanvasState();
@@ -565,20 +668,7 @@
         
         const tolerance = parseInt(toleranceSlider.value);
         const feather = parseInt(featherSlider.value);
-        const isContiguous = contiguousCheck.checked;
 
-        if (mode === 'replace' && isContiguous) {
-            alert("請點擊畫布上的區域來進行連續替換 (油漆桶)");
-            const fillHandler = (e) => {
-                const coords = getCanvasCoords(e);
-                if(coords) floodFill(coords.x, coords.y, targetRgb, replaceRgb, tolerance);
-                mainCanvas.removeEventListener('click', fillHandler);
-                mainCanvas.style.cursor = 'default';
-            };
-            mainCanvas.addEventListener('click', fillHandler);
-            mainCanvas.style.cursor = 'crosshair';
-            return;
-        }
         processGlobal(mode, targetRgb, replaceRgb, tolerance, feather);
     }
 
@@ -760,7 +850,7 @@
 
     function updateMagnifier(e, coords) {
         const m = document.getElementById('magnifier'); m.style.display='block';
-        m.style.left=`${e.pageX+20}px`; m.style.top=`${e.pageY+20}px`;
+        m.style.left=`${e.pageX + 10}px`; m.style.top=`${e.pageY + 10}px`;
         const ctx = document.getElementById('magCanvas').getContext('2d');
         ctx.fillStyle='#fff'; ctx.fillRect(0,0,120,120);
         ctx.drawImage(mainCanvas, coords.x-15, coords.y-15, 30, 30, 0, 0, 120, 120);
@@ -808,9 +898,11 @@
         colorHistory.forEach(hex => {
             const div = document.createElement('div'); div.className = 'history-item';
             div.innerHTML = `<div class="history-swatch" style="background-color:${hex}"></div><span class="history-hex">${hex}</span>`;
+            // v32 Fix: Auto copy on click
             div.onclick = () => {
                 const r = parseInt(hex.slice(1, 3), 16); const g = parseInt(hex.slice(3, 5), 16); const b = parseInt(hex.slice(5, 7), 16);
                 updateColorInfo(r, g, b, hex); calculateHarmonies(r, g, b);
+                copyText(hex);
             };
             historyList.appendChild(div);
         });
