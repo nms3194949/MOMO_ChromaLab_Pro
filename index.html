@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChromaLab Pro - v18 Restore Brush</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;900&family=Merriweather:wght@400;900&family=Playfair+Display:wght@400;900&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --border: #e2e8f0;
+            
+            /* Mockup 變數 */
+            --mockup-bg: #eee;
+            --mockup-text: #333;
+            --mockup-stroke: #000;
+            --mockup-width: 3px;
+            --mockup-font: 'Inter', sans-serif;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1366px;
+            background: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            box-sizing: border-box;
+        }
+
+        /* --- Header --- */
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 15px;
+        }
+        h1 { margin: 0; font-size: 1.5rem; color: var(--primary); display: flex; align-items: center; gap: 10px;}
+        
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: 0.2s;
+            font-size: 0.9rem;
+            display: flex; align-items: center; gap: 6px;
+            text-decoration: none;
+        }
+        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; background: #94a3b8; }
+        .btn.danger { background: #ef4444; }
+        .btn.dark { background: #0f172a; border: 1px solid #334155; }
+        .btn.magic { background: linear-gradient(45deg, #6366f1, #8b5cf6); }
+        .btn.outline { background: transparent; border: 1px solid var(--primary); color: var(--primary); }
+        .btn.outline:hover { background: #eef2ff; }
+        /* Active state for toggle buttons */
+        .btn.outline.active { background: var(--primary); color: white; border-color: var(--primary); }
+        
+        .btn.secondary { background: #64748b; }
+        .btn.warning { background: #f59e0b; color: white; }
+        .btn.small { padding: 4px 8px; font-size: 0.8rem; }
+
+        /* --- 上傳區 --- */
+        .upload-zone {
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 80px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f1f5f9;
+        }
+        .upload-zone:hover { border-color: var(--primary); background: #eef2ff; }
+        .upload-hint { color: #64748b; margin-top: 10px; font-size: 0.9rem; }
+
+        /* --- 工作區 & 濾鏡層 --- */
+        .workspace { display: none; flex-direction: column; gap: 20px; }
+        .visual-filter-layer { transition: filter 0.3s; }
+
+        .main-split-grid {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 24px;
+            align-items: start;
+        }
+        
+        .left-column-content { display: flex; flex-direction: column; gap: 20px; }
+
+        /* 工具列 */
+        .toolbar {
+            display: flex; align-items: center; gap: 20px; background: #f8fafc;
+            padding: 12px 20px; border-radius: 10px; border: 1px solid var(--border); flex-wrap: wrap;
+        }
+        .control-group { display: flex; align-items: center; gap: 10px; }
+        
+        select, input[type="color"] {
+            padding: 4px; border-radius: 6px; border: 1px solid #cbd5e1;
+            background: #fff; color: #333; cursor: pointer; font-size: 0.9rem; height: 30px;
+        }
+        input[type="color"] { padding: 0; width: 40px; }
+        
+        input[type="text"] {
+            padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1;
+            font-family: monospace; width: 80px; height: 20px;
+        }
+        
+        input[type="range"] { cursor: pointer; }
+
+        /* 自動分析色票區 */
+        .auto-palette-section { background: #fff; padding: 0 5px; }
+        .section-title { font-size: 0.95rem; font-weight: 700; color: #475569; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .palette-row { display: flex; gap: 12px; flex-wrap: wrap; }
+        .color-card {
+            flex: 1; min-width: 90px; height: 100px; border-radius: 8px; cursor: pointer;
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+            padding-bottom: 10px; font-family: monospace; color: #fff;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.6); box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: transform 0.2s, box-shadow 0.2s; position: relative;
+        }
+        .color-card:hover { transform: translateY(-4px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); z-index: 2; }
+        .pct-text { font-size: 1.2rem; font-weight: bold; line-height: 1; }
+        .hex-text { font-size: 0.75rem; opacity: 1; }
+
+        /* 畫布 */
+        .canvas-wrapper {
+            width: 100%; overflow: auto;
+            border: 1px solid var(--border); border-radius: 8px;
+            /* 使用棋盤格背景來凸顯透明度 */
+            background-image: linear-gradient(45deg, #eee 25%, transparent 25%), linear-gradient(-45deg, #eee 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #eee 75%), linear-gradient(-45deg, transparent 75%, #eee 75%);
+            background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+            max-height: 400px; 
+            text-align: center; padding: 20px; box-sizing: border-box; position: relative;
+        }
+        canvas { box-shadow: 0 4px 10px rgba(0,0,0,0.1); cursor: crosshair; display: inline-block; max-width: 100%; height: auto; }
+        /* Brush Mode Cursor */
+        canvas.brush-mode { cursor: crosshair !important; }
+
+        /* --- v14 新增：圖片編輯面板 --- */
+        .editor-panel { background: #f1f5f9; padding: 20px; border-radius: 12px; border: 1px solid #bfdbfe; }
+        .editor-row { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; flex-wrap: wrap; }
+        .color-picker-group { display: flex; flex-direction: column; gap: 5px; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid var(--border); }
+        .picker-inputs { display: flex; align-items: center; gap: 8px; }
+        .editor-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        
+        /* v16: 進階控制區 */
+        .advanced-controls {
+            background: #e0f2fe; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #bae6fd;
+            display: flex; flex-direction: column; gap: 12px;
+        }
+        /* v18: Brush Controls */
+        .brush-controls {
+            background: #f0fdf4; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #bbf7d0;
+            display: flex; flex-direction: column; gap: 12px;
+        }
+        .brush-active-indicator { color: #16a34a; font-weight: bold; display: none; font-size: 0.9rem;}
+        .brush-active-indicator.show { display: inline-block; }
+
+        .slider-row { display: flex; align-items: center; gap: 10px; }
+        .slider-label { font-size: 0.9rem; font-weight: bold; color: #0369a1; width: 100px; }
+        .slider-val { width: 30px; text-align: right; font-family: monospace; font-weight: bold; color: #0284c7; }
+
+
+        /* --- 實戰模擬 Mockup --- */
+        .mockup-section { border-top: 1px dashed #e2e8f0; padding-top: 20px; }
+        .mockup-toolbar {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 15px; background: #f1f5f9; padding: 10px 15px; border-radius: 8px; flex-wrap: wrap; gap: 10px;
+        }
+        .mockup-controls { display: flex; align-items: center; gap: 20px; }
+        .mockup-container {
+            width: 100%; height: 220px;
+            border-radius: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center;
+            text-align: center; transition: background-color 0.3s ease;
+            box-shadow: inset 0 0 40px rgba(0,0,0,0.05); background-color: var(--mockup-bg);
+            border: 1px solid var(--border); position: relative; overflow: hidden;
+        }
+        .mockup-title {
+            font-family: var(--mockup-font); font-size: 3.5rem; line-height: 1.1; margin: 0; font-weight: 900; letter-spacing: -1px;
+            color: var(--mockup-text); -webkit-text-stroke: var(--mockup-width) var(--mockup-stroke);
+            paint-order: stroke fill; transition: all 0.2s; text-transform: uppercase;
+        }
+        .mockup-sub {
+            font-family: monospace; font-size: 0.9rem; margin-top: 15px;
+            color: var(--mockup-text); opacity: 0.9; font-weight: bold;
+            background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 4px;
+        }
+
+        .harmony-panel { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+        .harmony-group { margin-bottom: 20px; padding: 10px; border-radius: 8px; transition: background 0.2s; }
+        .harmony-group:hover { background: #f8fafc; }
+        .harmony-group.active { background: #eff6ff; border: 1px solid #bfdbfe; }
+        .harmony-label { font-size: 0.85rem; color: #64748b; margin-bottom: 8px; font-weight: bold; }
+        .harmony-colors { display: flex; gap: 8px; height: 50px; }
+        .h-box {
+            flex: 1; border-radius: 6px; cursor: pointer; position: relative; transition: 0.2s;
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+        .h-box:hover { transform: scale(1.05); z-index: 2; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+
+        /* Sidebar & Info */
+        .sidebar { display: flex; flex-direction: column; gap: 15px; }
+        .info-card { background: #f1f5f9; padding: 15px; border-radius: 12px; border: 1px solid var(--border); }
+        .live-swatch {
+            width: 100%; height: 60px; border-radius: 8px; margin-bottom: 15px;
+            border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); background: #ddd;
+            /* 棋盤格背景 */
+            background-image: linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%);
+            background-size: 10px 10px;
+            position: relative;
+        }
+        /* 用偽元素顯示顏色，才能疊在棋盤格上 */
+        .live-swatch::after {
+            content: ''; position: absolute; top:0; left:0; width:100%; height:100%;
+            background-color: var(--swatch-color, transparent); border-radius: 8px;
+        }
+
+        .value-row {
+            display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e2e8f0;
+            font-family: monospace; font-size: 0.9rem; cursor: pointer;
+        }
+        .value-row:last-child { border-bottom: none; }
+        .value-row:hover .val { color: var(--primary); font-weight: bold; }
+        .label { color: #64748b; } .val { color: #333; }
+
+        /* 歷史紀錄 List */
+        .history-list {
+            display: flex; flex-direction: column; gap: 8px; max-height: 150px; overflow-y: auto;
+        }
+        .history-item {
+            display: flex; align-items: center; gap: 10px; background: #fff; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; cursor: pointer;
+        }
+        .history-item:hover { background: #f1f5f9; border-color: #cbd5e1; }
+        .history-swatch { width: 24px; height: 24px; border-radius: 4px; border: 1px solid #ddd; }
+        .history-hex { font-family: monospace; font-size: 0.85rem; color: #333; }
+
+        /* 色階與漸層 */
+        .shades-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 10px; }
+        .shade-box {
+            height: 35px; border-radius: 4px; cursor: pointer; position: relative;
+        }
+        .shade-box:hover { transform: scale(1.1); z-index: 2; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .shade-box::after {
+            content: attr(data-label);
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 0.6rem; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+            opacity: 0; transition: 0.2s; pointer-events: none;
+        }
+        .shade-box:hover::after { opacity: 1; }
+
+        .gradient-box {
+            height: 80px; width: 100%; border-radius: 8px; margin-bottom: 10px;
+            background: #eee; border: 1px solid #ddd; cursor: pointer; position: relative;
+        }
+        .gradient-box::after {
+            content: "點擊複製 CSS"; position: absolute;
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+            font-size: 0.8rem; opacity: 0; transition: 0.2s;
+        }
+        .gradient-box:hover::after { opacity: 1; }
+
+        /* 儲存專案列表 */
+        .saved-list {
+            max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
+        }
+        .saved-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 8px; background: #fff; border: 1px solid #e2e8f0; border-radius: 6px;
+        }
+        .saved-info { display: flex; align-items: center; gap: 8px; }
+        .saved-swatch { width: 20px; height: 20px; border-radius: 4px; border: 1px solid #ddd; }
+        .delete-btn { color: #ef4444; cursor: pointer; font-weight: bold; padding: 0 5px; }
+
+        .magnifier {
+            position: fixed; pointer-events: none;
+            border: 3px solid #fff; box-shadow: 0 0 0 2px var(--primary), 0 10px 20px rgba(0,0,0,0.2);
+            border-radius: 50%; width: 120px; height: 120px;
+            overflow: hidden; display: none; z-index: 100; background: #fff;
+        }
+        .magnifier canvas { width: 100%; height: 100%; image-rendering: pixelated; }
+
+        @media (max-width: 1024px) { .main-split-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+<svg style="display: none;">
+    <defs>
+        <filter id="protanopia"><feColorMatrix type="matrix" values="0.567, 0.433, 0, 0, 0 0.558, 0.442, 0, 0, 0 0, 0.242, 0.758, 0, 0 0, 0, 1, 0"/></filter>
+        <filter id="deuteranopia"><feColorMatrix type="matrix" values="0.625, 0.375, 0, 0, 0 0.7, 0.3, 0, 0, 0 0, 0.3, 0.7, 0, 0 0, 0, 0, 1, 0"/></filter>
+        <filter id="tritanopia"><feColorMatrix type="matrix" values="0.95, 0.05, 0, 0, 0 0, 0.433, 0.567, 0, 0 0, 0.475, 0.525, 0, 0 0, 0, 0, 1, 0"/></filter>
+        <filter id="grayscale"><feColorMatrix type="matrix" values="0.3333, 0.3333, 0.3333, 0, 0 0.3333, 0.3333, 0.3333, 0, 0 0.3333, 0.3333, 0.3333, 0, 0 0, 0, 0, 1, 0"/></filter>
+    </defs>
+</svg>
+
+<div class="container">
+    <div class="header-row">
+        <h1>🎨 ChromaLab Pro <span style="font-size:0.8rem; background:#e0e7ff; color:var(--primary); padding:2px 8px; border-radius:10px;">v18.0 Brush</span></h1>
+        <button class="btn danger" id="resetBtn" style="display:none;">🔄 清空重新開始</button>
+    </div>
+    
+    <div class="upload-zone" id="uploadZone">
+        <div style="font-size: 3rem; margin-bottom: 10px;">🖼️</div>
+        <h3>點擊上傳 / 拖放圖片 / Ctrl+V 貼上</h3>
+        <p class="upload-hint">支援 JPG, PNG, WEBP</p>
+        <input type="file" id="fileInput" accept="image/*" style="display:none;">
+    </div>
+
+    <div class="workspace visual-filter-layer" id="workspace">
+        
+        <div class="auto-palette-section">
+            <div class="section-title">✨ 圖片主要配色 (Auto Palette)</div>
+            <div class="palette-row" id="paletteContainer"></div>
+        </div>
+
+        <div class="toolbar">
+            <div class="control-group" style="flex:1;">
+                <label>🔍 縮放:</label>
+                <input type="range" id="zoomSlider" min="10" max="200" value="100">
+                <span id="zoomLabel" style="width:40px; text-align:right; font-family:monospace;">100%</span>
+            </div>
+            <div class="control-group">
+                <label>👁️ 色盲模擬:</label>
+                <select id="a11ySelect" onchange="applyA11yFilter(this.value)">
+                    <option value="none">正常視覺 (Normal)</option>
+                    <option value="protanopia">紅色盲 (Protanopia)</option>
+                    <option value="deuteranopia">綠色盲 (Deuteranopia)</option>
+                    <option value="tritanopia">藍色盲 (Tritanopia)</option>
+                    <option value="grayscale">全色盲 (Grayscale)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="main-split-grid">
+            
+            <div class="left-column-content">
+                
+                <div class="canvas-wrapper">
+                    <canvas id="mainCanvas"></canvas>
+                </div>
+
+                <div class="editor-panel">
+                    <div class="section-title" style="margin-bottom: 15px;">🛠️ 圖片色彩編輯 (Image Editor)</div>
+                    <div style="font-size:0.85rem; color:#64748b; margin-bottom:15px;">
+                        💡 點擊「⬇️ 帶入」可使用目前畫布吸取的顏色。
+                    </div>
+                    
+                    <div class="editor-row">
+                        <div class="color-picker-group">
+                            <label for="targetColorPicker">🎯 目標色 (Target):</label>
+                            <div class="picker-inputs">
+                                <input type="color" id="targetColorPicker" value="#ffffff">
+                                <input type="text" id="targetHexInput" value="#FFFFFF" placeholder="#HEX">
+                                <button class="btn small outline" onclick="setTargetFromCurrent()" title="使用目前畫布吸取的顏色">⬇️ 帶入</button>
+                            </div>
+                        </div>
+                        <span style="font-size:1.2rem;">→</span>
+                        <div class="color-picker-group">
+                            <label for="replaceColorPicker">🎨 替換為 (New):</label>
+                            <div class="picker-inputs">
+                                <input type="color" id="replaceColorPicker" value="#ff0000">
+                                <input type="text" id="replaceHexInput" value="#FF0000" placeholder="#HEX">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="advanced-controls">
+                        <div class="slider-row">
+                            <span style="font-size:1.2rem;">🎚️</span>
+                            <div class="slider-label">容許度<br><span style="font-size:0.7em; opacity:0.7; font-weight:normal;">(Tolerance)</span></div>
+                            <input type="range" id="toleranceSlider" min="1" max="120" value="30" style="flex:1;">
+                            <span id="tolVal" class="slider-val">30</span>
+                        </div>
+                        
+                        <div class="slider-row">
+                            <span style="font-size:1.2rem;">🪶</span>
+                            <div class="slider-label">邊緣柔化<br><span style="font-size:0.7em; opacity:0.7; font-weight:normal;">(Feather)</span></div>
+                            <input type="range" id="featherSlider" min="0" max="50" value="10" style="flex:1;">
+                            <span id="featherVal" class="slider-val">10</span>
+                        </div>
+                    </div>
+                    
+                    <div class="brush-controls">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                             <button class="btn outline" id="toggleBrushBtn" style="width:100%;" onclick="toggleBrushMode()">🖌️ 啟用復原筆刷 (Restore)</button>
+                        </div>
+                        <div class="brush-active-indicator" id="brushIndicator">⚠️ 筆刷模式中：請在畫布上拖曳修補 (吸管已暫停)</div>
+                        
+                        <div class="slider-row" id="brushSizeRow" style="display:none;">
+                            <span style="font-size:1.2rem;">⚫</span>
+                            <div class="slider-label">筆刷大小<br><span style="font-size:0.7em; opacity:0.7; font-weight:normal;">(Size)</span></div>
+                            <input type="range" id="brushSizeSlider" min="5" max="100" value="30" style="flex:1;">
+                            <span id="brushSizeVal" class="slider-val">30</span>
+                        </div>
+                    </div>
+
+                    <div class="editor-actions">
+                        <button class="btn warning" id="undoBtn" onclick="undoLastAction()" disabled title="復原上一步">↩️ 復原</button>
+                        
+                        <button class="btn magic" onclick="applyColorModification('replace')">🔄 執行色彩替換</button>
+                        <button class="btn outline" onclick="applyColorModification('transparent')">✨ 智慧去背 (消除毛邊)</button>
+                        <button class="btn secondary" onclick="resetImage()">↩️ 還原原圖</button>
+                    </div>
+                    <div class="editor-actions" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e2e8f0;">
+                         <button class="btn dark" style="width:100%;" onclick="downloadModifiedImage()">💾 下載編輯後圖片 (PNG)</button>
+                    </div>
+                </div>
+
+                <div class="mockup-section" id="mockupSection" style="display:none;">
+                    <div class="section-title">
+                        👁️ 實戰模擬 (Preview)
+                    </div>
+                    <div class="mockup-toolbar">
+                        <div class="mockup-controls">
+                            <label style="font-size:0.9rem; font-weight:bold; color:#475569;">🔲 邊框:</label>
+                            <input type="range" id="strokeSlider" min="0" max="15" step="0.5" value="3" style="width:80px;">
+                            <label style="font-size:0.9rem; font-weight:bold; color:#475569; margin-left:15px;">🅰 字體:</label>
+                            <select id="fontSelect" onchange="changeMockupFont(this.value)">
+                                <option value="'Inter', sans-serif">無襯線 (Sans) - Inter</option>
+                                <option value="'Playfair Display', serif">襯線 (Serif) - Playfair</option>
+                                <option value="'Merriweather', serif">閱讀 (Serif) - Merriweather</option>
+                                <option value="'Roboto Mono', monospace">工程 (Mono) - Roboto</option>
+                            </select>
+                        </div>
+                        <button class="btn outline" onclick="swapMockupColors()">
+                            <span style="font-size:1.1rem;">⇄</span> 交換
+                        </button>
+                    </div>
+                    <div class="mockup-container" id="mockupBox">
+                        <div class="mockup-title">DESIGN<br>MOCKUP</div>
+                        <div class="mockup-sub">Smart Contrast & Style Swap</div>
+                    </div>
+                </div>
+
+                <div class="harmony-panel">
+                    <div class="section-title">🎨 配色靈感 (點擊切換預覽)</div>
+                    <div id="harmonyContainer" style="opacity: 0.5; pointer-events: none;">
+                        <div class="harmony-group" id="group-ana">
+                            <div class="harmony-label">相似色 (Analogous) <span style="color:#primary; font-size:0.7em; border:1px solid #ccc; padding:0 4px; border-radius:4px;">預設</span></div>
+                            <div class="harmony-colors" id="harmony-ana"></div>
+                        </div>
+                        <div class="harmony-group" id="group-tri">
+                            <div class="harmony-label">三角色 (Triadic)</div>
+                            <div class="harmony-colors" id="harmony-tri"></div>
+                        </div>
+                        <div class="harmony-group" id="group-comp">
+                            <div class="harmony-label">互補色 (Complementary)</div>
+                            <div class="harmony-colors" id="harmony-comp"></div>
+                        </div>
+                        <div class="harmony-group" id="group-split">
+                            <div class="harmony-label">分裂互補色 (Split Complementary)</div>
+                            <div class="harmony-colors" id="harmony-split"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <button id="eyeDropperBtn" class="btn magic" style="width:100%; display:none;">🖊️ 吸取螢幕任意顏色</button>
+                
+                <div class="info-card">
+                    <div class="section-title">
+                        色彩數值 (目前)
+                        <button onclick="saveCurrentColor()" style="font-size:0.7rem; padding:2px 8px; border-radius:4px; border:1px solid #ccc; cursor:pointer; background:#fff;">💾 存入最愛</button>
+                    </div>
+                    <div class="live-swatch" id="liveSwatch"></div>
+                    <div class="value-row" onclick="copyText(document.getElementById('valHex').innerText)">
+                        <span class="label">HEX</span><span class="val" id="valHex">#FFFFFF</span>
+                    </div>
+                    <div class="value-row" onclick="copyText(document.getElementById('valRgb').innerText)">
+                        <span class="label">RGB</span><span class="val" id="valRgb">255, 255, 255</span>
+                    </div>
+                    <div class="value-row" onclick="copyText(document.getElementById('valCmyk').innerText)">
+                        <span class="label">CMYK</span><span class="val" id="valCmyk">0, 0, 0, 0</span>
+                    </div>
+                    <div class="value-row" onclick="copyText(document.getElementById('valOklch').innerText)">
+                        <span class="label">OKLCH</span><span class="val" id="valOklch">0.0, 0.0, 0.0</span>
+                    </div>
+                    <div style="font-size:0.7rem; color:#999; margin-top:8px; text-align:right;">(點擊數值複製)</div>
+                </div>
+
+                <div class="info-card">
+                    <div class="section-title">🕒 歷史紀錄 (Recent Clicks)</div>
+                    <div class="history-list" id="historyList">
+                         <div style="color:#999; font-size:0.8rem; text-align:center;">點擊畫布以紀錄</div>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <div class="section-title">📊 系統色階 (Shades)</div>
+                    <div id="shadesContainer" class="shades-grid">
+                        <div style="grid-column:1/-1; color:#999; font-size:0.8rem; text-align:center;">點擊色票生成</div>
+                    </div>
+                    <button onclick="exportTailwindConfig()" class="btn outline" style="width:100%; margin-top:10px; font-size:0.8rem;">
+                        📋 複製 Tailwind Config
+                    </button>
+                </div>
+
+                <div class="info-card">
+                    <div class="section-title">🌈 漸層產生器</div>
+                    <div class="gradient-box" id="gradientPreview" onclick="copyGradient()"></div>
+                </div>
+
+                <div class="info-card">
+                    <div class="section-title">📁 已儲存的最愛 (Saved)</div>
+                    <div class="saved-list" id="savedList">
+                        <div style="color:#999; font-size:0.8rem; text-align:center;">暫無儲存</div>
+                    </div>
+                </div>
+
+                <button onclick="downloadPaletteCard()" class="btn" style="width:100%; background:linear-gradient(to right, #ec4899, #8b5cf6);">📸 下載精美色卡</button>
+                <button onclick="exportCSS()" class="btn dark" style="width:100%;">💾 匯出目前色票為 CSS</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="magnifier" class="magnifier"><canvas id="magCanvas"></canvas></div>
+
+<script>
+    // --- 變數 ---
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('fileInput');
+    const resetBtn = document.getElementById('resetBtn');
+    const workspace = document.getElementById('workspace');
+    const mainCanvas = document.getElementById('mainCanvas');
+    const ctx = mainCanvas.getContext('2d', { willReadFrequently: true });
+    const magnifier = document.getElementById('magnifier');
+    const magCtx = document.getElementById('magCanvas').getContext('2d');
+    const paletteContainer = document.getElementById('paletteContainer');
+    const harmonyContainer = document.getElementById('harmonyContainer');
+    const strokeSlider = document.getElementById('strokeSlider');
+    const mockupBox = document.getElementById('mockupBox');
+    const gradientPreview = document.getElementById('gradientPreview');
+    const shadesContainer = document.getElementById('shadesContainer');
+    const savedList = document.getElementById('savedList');
+    const historyList = document.getElementById('historyList'); 
+
+    // v16 New Elements
+    const targetColorPicker = document.getElementById('targetColorPicker');
+    const targetHexInput = document.getElementById('targetHexInput');
+    const replaceColorPicker = document.getElementById('replaceColorPicker');
+    const replaceHexInput = document.getElementById('replaceHexInput');
+    const toleranceSlider = document.getElementById('toleranceSlider');
+    const tolVal = document.getElementById('tolVal');
+    const featherSlider = document.getElementById('featherSlider');
+    const featherVal = document.getElementById('featherVal');
+    
+    // v17: Undo
+    const undoBtn = document.getElementById('undoBtn');
+
+    // v18: Brush
+    const toggleBrushBtn = document.getElementById('toggleBrushBtn');
+    const brushIndicator = document.getElementById('brushIndicator');
+    const brushSizeRow = document.getElementById('brushSizeRow');
+    const brushSizeSlider = document.getElementById('brushSizeSlider');
+    const brushSizeVal = document.getElementById('brushSizeVal');
+
+    let currentGradientCSS = "";
+    let currentMainColor = "#FFFFFF";
+    let currentShades = {};
+    let originalImageData = null; 
+    let colorHistory = []; 
+    
+    // v17: Undo Stack
+    let undoStack = [];
+    const MAX_STACK_SIZE = 20;
+
+    // v18: Brush State
+    let isBrushMode = false;
+    let isDrawing = false;
+    let sourceImage = null; // Store the actual Image object for restoration
+
+    document.getElementById('magCanvas').width = 120;
+    document.getElementById('magCanvas').height = 120;
+    magCtx.imageSmoothingEnabled = false;
+
+    // --- Init Local Storage ---
+    loadSavedColors();
+
+    // --- Event Listeners for Pickers & Inputs (Sync) ---
+    // Target Color
+    targetColorPicker.addEventListener('input', (e) => {
+        targetHexInput.value = e.target.value.toUpperCase();
+    });
+    targetHexInput.addEventListener('change', (e) => {
+        let val = e.target.value;
+        if(!val.startsWith('#')) val = '#' + val;
+        if(/^#[0-9A-F]{6}$/i.test(val)) {
+            targetColorPicker.value = val;
+            targetHexInput.value = val.toUpperCase();
+        }
+    });
+
+    // Replace Color
+    replaceColorPicker.addEventListener('input', (e) => {
+        replaceHexInput.value = e.target.value.toUpperCase();
+    });
+    replaceHexInput.addEventListener('change', (e) => {
+        let val = e.target.value;
+        if(!val.startsWith('#')) val = '#' + val;
+        if(/^#[0-9A-F]{6}$/i.test(val)) {
+            replaceColorPicker.value = val;
+            replaceHexInput.value = val.toUpperCase();
+        }
+    });
+
+    // Sliders
+    toleranceSlider.addEventListener('input', (e) => tolVal.innerText = e.target.value);
+    featherSlider.addEventListener('input', (e) => featherVal.innerText = e.target.value);
+    brushSizeSlider.addEventListener('input', (e) => brushSizeVal.innerText = e.target.value);
+
+    // --- Helper to set Target from current Main ---
+    function setTargetFromCurrent() {
+        if(currentMainColor) {
+            targetColorPicker.value = currentMainColor;
+            targetHexInput.value = currentMainColor;
+        }
+    }
+
+    // --- History Function ---
+    function addToHistory(hex) {
+        if(colorHistory.length > 0 && colorHistory[0] === hex) return;
+        colorHistory.unshift(hex);
+        if(colorHistory.length > 20) colorHistory.pop(); 
+        renderHistory();
+    }
+
+    function renderHistory() {
+        historyList.innerHTML = '';
+        if(colorHistory.length === 0) {
+            historyList.innerHTML = '<div style="color:#999; font-size:0.8rem; text-align:center;">暫無紀錄</div>';
+            return;
+        }
+        colorHistory.forEach(hex => {
+            const div = document.createElement('div');
+            div.className = 'history-item';
+            div.innerHTML = `
+                <div class="history-swatch" style="background:${hex}"></div>
+                <span class="history-hex">${hex}</span>
+            `;
+            div.onclick = () => {
+                const r = parseInt(hex.slice(1, 3), 16);
+                const g = parseInt(hex.slice(3, 5), 16);
+                const b = parseInt(hex.slice(5, 7), 16);
+                updateColorInfo(r, g, b, hex);
+                calculateHarmonies(r, g, b);
+            };
+            historyList.appendChild(div);
+        });
+    }
+    
+    // --- v17: Undo System ---
+    function saveCanvasState() {
+        const currentState = ctx.getImageData(0, 0, mainCanvas.width, mainCanvas.height);
+        undoStack.push(currentState);
+        if (undoStack.length > MAX_STACK_SIZE) {
+            undoStack.shift(); // Remove oldest
+        }
+        updateUndoButton();
+    }
+    
+    function undoLastAction() {
+        if (undoStack.length === 0) return;
+        const previousState = undoStack.pop();
+        ctx.putImageData(previousState, 0, 0);
+        updateUndoButton();
+        generateAutoPaletteFromCanvas(); // Re-analyze colors after undo
+    }
+    
+    function updateUndoButton() {
+        undoBtn.disabled = undoStack.length === 0;
+        if(undoStack.length > 0) {
+            undoBtn.innerHTML = `↩️ 復原 (${undoStack.length})`;
+        } else {
+            undoBtn.innerHTML = `↩️ 復原`;
+        }
+    }
+
+    // --- v18: Brush System ---
+    function toggleBrushMode() {
+        isBrushMode = !isBrushMode;
+        if(isBrushMode) {
+            mainCanvas.classList.add('brush-mode');
+            toggleBrushBtn.classList.add('active');
+            toggleBrushBtn.innerText = "🖌️ 停用復原筆刷";
+            brushIndicator.classList.add('show');
+            brushSizeRow.style.display = 'flex';
+        } else {
+            mainCanvas.classList.remove('brush-mode');
+            toggleBrushBtn.classList.remove('active');
+            toggleBrushBtn.innerText = "🖌️ 啟用復原筆刷 (Restore)";
+            brushIndicator.classList.remove('show');
+            brushSizeRow.style.display = 'none';
+        }
+    }
+
+    // --- A11y Filter ---
+    function applyA11yFilter(mode) {
+        if(mode === 'none') { workspace.style.filter = 'none'; }
+        else { workspace.style.filter = `url(#${mode})`; }
+    }
+
+    // --- Font Change ---
+    function changeMockupFont(fontFamily) {
+        mockupBox.style.setProperty('--mockup-font', fontFamily);
+    }
+
+    // --- Local Storage Functions ---
+    function saveCurrentColor() {
+        if(!currentMainColor) return;
+        let saves = JSON.parse(localStorage.getItem('momo_saved_colors') || "[]");
+        if(!saves.includes(currentMainColor)) {
+            saves.unshift(currentMainColor);
+            if(saves.length > 20) saves.pop();
+            localStorage.setItem('momo_saved_colors', JSON.stringify(saves));
+            loadSavedColors();
+        } else {
+            alert('這個顏色已經存過了！');
+        }
+    }
+    function deleteSavedColor(hex) {
+        let saves = JSON.parse(localStorage.getItem('momo_saved_colors') || "[]");
+        saves = saves.filter(c => c !== hex);
+        localStorage.setItem('momo_saved_colors', JSON.stringify(saves));
+        loadSavedColors();
+    }
+    function loadSavedColors() {
+        const saves = JSON.parse(localStorage.getItem('momo_saved_colors') || "[]");
+        savedList.innerHTML = '';
+        if(saves.length === 0) {
+            savedList.innerHTML = '<div style="color:#999; font-size:0.8rem; text-align:center;">暫無儲存</div>';
+            return;
+        }
+        saves.forEach(hex => {
+            const div = document.createElement('div');
+            div.className = 'saved-item';
+            div.innerHTML = `
+                <div class="saved-info" onclick="restoreColor('${hex}')" style="cursor:pointer; flex:1;">
+                    <div class="saved-swatch" style="background:${hex}"></div>
+                    <span style="font-family:monospace; font-size:0.9rem;">${hex}</span>
+                </div>
+                <div class="delete-btn" onclick="deleteSavedColor('${hex}')">×</div>
+            `;
+            savedList.appendChild(div);
+        });
+    }
+    function restoreColor(hex) {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        updateColorInfo(r, g, b, hex);
+        calculateHarmonies(r, g, b);
+    }
+
+    // --- Tailwind Config Export ---
+    function exportTailwindConfig() {
+        if(Object.keys(currentShades).length === 0) {
+            alert('請先選擇一個顏色生成色階'); return;
+        }
+        let configStr = `// tailwind.config.js\nmodule.exports = {\n  theme: {\n    extend: {\n      colors: {\n        'brand': {\n`;
+        const keys = Object.keys(currentShades).sort((a,b) => parseInt(a)-parseInt(b));
+        keys.forEach(k => { configStr += `          ${k}: '${currentShades[k]}',\n`; });
+        configStr += `        }\n      }\n    }\n  }\n}`;
+        copyText(configStr);
+        alert('Tailwind Config 已複製到剪貼簿！');
+    }
+
+    // --- EyeDropper ---
+    if ('EyeDropper' in window) {
+        const eyeBtn = document.getElementById('eyeDropperBtn');
+        eyeBtn.style.display = 'block';
+        eyeBtn.addEventListener('click', async () => {
+            try {
+                const eyeDropper = new EyeDropper();
+                const result = await eyeDropper.open();
+                const hex = result.sRGBHex;
+                const r = parseInt(hex.slice(1, 3), 16);
+                const g = parseInt(hex.slice(3, 5), 16);
+                const b = parseInt(hex.slice(5, 7), 16);
+                updateColorInfo(r, g, b, hex);
+                calculateHarmonies(r, g, b);
+                addToHistory(hex); 
+            } catch (e) { console.log('User cancelled'); }
+        });
+    }
+
+    // --- Upload Logic ---
+    uploadZone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+    uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.style.background = '#e0e7ff'; });
+    uploadZone.addEventListener('dragleave', () => uploadZone.style.background = '#f1f5f9');
+    uploadZone.addEventListener('drop', (e) => { e.preventDefault(); handleFile(e.dataTransfer.files[0]); });
+    document.addEventListener('paste', (e) => {
+        if(workspace.style.display === 'flex') return;
+        const items = e.clipboardData.items;
+        for (let item of items) {
+            if (item.type.indexOf('image') !== -1) { handleFile(item.getAsFile()); break; }
+        }
+    });
+
+    resetBtn.addEventListener('click', () => location.reload());
+
+    function handleFile(file) {
+        if (!file || !file.type.startsWith('image/')) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                sourceImage = img; // v18: Store source for brush
+                mainCanvas.width = img.width;
+                mainCanvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+                
+                originalImageData = ctx.getImageData(0, 0, mainCanvas.width, mainCanvas.height);
+                
+                // Reset undo stack on new file load
+                undoStack = [];
+                updateUndoButton();
+
+                uploadZone.style.display = 'none';
+                workspace.style.display = 'flex';
+                resetBtn.style.display = 'block';
+                let initialScale = 100;
+                if(img.width > 800) initialScale = Math.floor((800/img.width)*100);
+                updateZoom(initialScale);
+                document.getElementById('zoomSlider').value = initialScale;
+                generateAutoPaletteFromCanvas();
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    document.getElementById('zoomSlider').addEventListener('input', (e) => updateZoom(e.target.value));
+    function updateZoom(val) {
+        mainCanvas.style.width = `${val}%`;
+        document.getElementById('zoomLabel').innerText = `${val}%`;
+    }
+
+    strokeSlider.addEventListener('input', (e) => {
+        const val = e.target.value;
+        mockupBox.style.setProperty('--mockup-width', `${val}px`);
+    });
+
+    window.swapMockupColors = function() {
+        const currentFill = mockupBox.style.getPropertyValue('--mockup-text');
+        const currentStroke = mockupBox.style.getPropertyValue('--mockup-stroke');
+        mockupBox.style.setProperty('--mockup-text', currentStroke);
+        mockupBox.style.setProperty('--mockup-stroke', currentFill);
+    }
+
+    // --- v18: Unified Canvas Interaction (Pick or Brush) ---
+    
+    mainCanvas.addEventListener('mousedown', (e) => {
+        if(isBrushMode) {
+            isDrawing = true;
+            saveCanvasState(); // Save before brush stroke
+            performBrush(e);
+        }
+    });
+
+    mainCanvas.addEventListener('mousemove', (e) => {
+        const coords = getCanvasCoords(e);
+        if(!coords) return;
+        
+        if(isBrushMode) {
+            if(isDrawing) performBrush(e);
+        } else {
+            // Normal Picker Mode
+            const pixel = ctx.getImageData(coords.x, coords.y, 1, 1).data;
+            const [r, g, b] = pixel;
+            const hex = rgbToHex(r,g,b);
+            updateColorInfo(r, g, b, hex);
+            updateMagnifier(e, coords);
+        }
+    });
+
+    mainCanvas.addEventListener('mouseup', () => isDrawing = false);
+    mainCanvas.addEventListener('mouseleave', () => {
+        isDrawing = false;
+        magnifier.style.display = 'none';
+    });
+    
+    // Click Behavior
+    mainCanvas.addEventListener('click', (e) => {
+        if(isBrushMode) return; // Don't pick color in brush mode
+
+        const coords = getCanvasCoords(e);
+        if(!coords) return;
+        const pixel = ctx.getImageData(coords.x, coords.y, 1, 1).data;
+        const [r, g, b] = pixel;
+        const hex = rgbToHex(r,g,b);
+        
+        updateColorInfo(r, g, b, hex);
+        calculateHarmonies(r, g, b);
+        addToHistory(hex);
+    });
+
+    // --- v18: Brush Logic ---
+    function performBrush(e) {
+        if(!sourceImage) return;
+        const coords = getCanvasCoords(e);
+        if(!coords) return;
+
+        const size = parseInt(brushSizeSlider.value);
+        const radius = size / 2;
+
+        // Restore original image data only within the circle
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(coords.x, coords.y, radius, 0, Math.PI * 2);
+        ctx.clip();
+        // Draw the original image again over the canvas, but clipped to the circle
+        ctx.drawImage(sourceImage, 0, 0, mainCanvas.width, mainCanvas.height);
+        ctx.restore();
+    }
+
+
+    // --- v16/v17 Updated: Image Editor with Undo ---
+
+    function hexToRgbObj(hex) {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return { r, g, b };
+    }
+
+    function applyColorModification(mode) {
+        if (!originalImageData) return;
+        
+        // v17: Save State BEFORE modifying
+        saveCanvasState();
+
+        const targetHex = targetColorPicker.value;
+        const targetRgb = hexToRgbObj(targetHex);
+        
+        const tolerance = parseInt(toleranceSlider.value);
+        const feather = parseInt(featherSlider.value);
+        
+        const imgData = ctx.getImageData(0, 0, mainCanvas.width, mainCanvas.height);
+        const data = imgData.data;
+
+        let replaceRgb = null;
+        if (mode === 'replace') {
+            replaceRgb = hexToRgbObj(replaceColorPicker.value);
+        }
+
+        const tolDist = tolerance;
+        const featherDist = feather; 
+        const maxDist = tolDist + featherDist;
+
+        for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i+1];
+            const b = data[i+2];
+
+            const dist = Math.sqrt((r - targetRgb.r)**2 + (g - targetRgb.g)**2 + (b - targetRgb.b)**2);
+
+            if (mode === 'transparent') {
+                if (dist < tolDist) {
+                    data[i+3] = 0;
+                } else if (dist < maxDist && featherDist > 0) {
+                    const factor = (dist - tolDist) / featherDist; 
+                    data[i+3] = Math.floor(factor * 255);
+                }
+            } else if (mode === 'replace') {
+                if (dist < tolDist) {
+                    data[i] = replaceRgb.r;
+                    data[i+1] = replaceRgb.g;
+                    data[i+2] = replaceRgb.b;
+                } else if (dist < maxDist && featherDist > 0) {
+                     const factor = 1 - ((dist - tolDist) / featherDist);
+                     data[i] = data[i] + (replaceRgb.r - data[i]) * factor;
+                     data[i+1] = data[i+1] + (replaceRgb.g - data[i+1]) * factor;
+                     data[i+2] = data[i+2] + (replaceRgb.b - data[i+2]) * factor;
+                }
+            }
+        }
+
+        ctx.putImageData(imgData, 0, 0);
+        generateAutoPaletteFromCanvas();
+    }
+
+    function resetImage() {
+        if (!originalImageData) return;
+        
+        ctx.putImageData(originalImageData, 0, 0);
+        saveCanvasState(); 
+        generateAutoPaletteFromCanvas();
+    }
+
+    function downloadModifiedImage() {
+        const link = document.createElement('a');
+        link.download = 'chromalab-edited.png';
+        link.href = mainCanvas.toDataURL();
+        link.click();
+    }
+
+    // --- Update Info ---
+    function updateColorInfo(r, g, b, hex) {
+        currentMainColor = hex;
+        document.getElementById('liveSwatch').style.setProperty('--swatch-color', hex);
+        document.getElementById('valHex').innerText = hex;
+        document.getElementById('valRgb').innerText = `${r}, ${g}, ${b}`;
+        const cmyk = rgbToCmyk(r, g, b);
+        document.getElementById('valCmyk').innerText = `${cmyk.c}, ${cmyk.m}, ${cmyk.y}, ${cmyk.k}`;
+        const oklch = rgbToOklch(r, g, b);
+        document.getElementById('valOklch').innerText = oklch;
+        generateShades(r, g, b);
+    }
+
+    function generateShades(r, g, b) {
+        shadesContainer.innerHTML = '';
+        currentShades = {};
+        const [h, s, l] = rgbToHsl(r, g, b);
+        const levels = [0.95, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1];
+        const labels = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900];
+
+        levels.forEach((targetL, i) => {
+            const [newR, newG, newB] = hslToRgb(h, s, targetL);
+            const hex = rgbToHex(newR, newG, newB);
+            currentShades[labels[i]] = hex;
+            const div = document.createElement('div');
+            div.className = 'shade-box'; div.style.backgroundColor = hex; div.setAttribute('data-label', labels[i]);
+            div.onclick = () => copyText(hex);
+            if (Math.abs(targetL - l) < 0.05) { div.style.border = "2px solid #333"; div.style.transform = "scale(1.1)"; }
+            shadesContainer.appendChild(div);
+        });
+    }
+
+    // --- Harmonies ---
+    function calculateHarmonies(r, g, b) {
+        const [h, s, l] = rgbToHsl(r, g, b);
+        const mainHex = rgbToHex(r, g, b);
+        const isDarkBg = l < 0.5;
+        const fillL = isDarkBg ? 0.92 : 0.15; 
+        const strokeL = isDarkBg ? 0.60 : 0.45; 
+        const safeS = Math.min(s, 0.85);
+
+        harmonyContainer.style.opacity = '1';
+        harmonyContainer.style.pointerEvents = 'auto';
+        document.getElementById('mockupSection').style.display = 'block';
+
+        const rules = { 'ana': [-30, 30], 'tri': [120, 240], 'comp': [180], 'split': [150, 210] };
+        document.querySelectorAll('.harmony-group').forEach(el => el.classList.remove('active'));
+
+        for(let key in rules) {
+            const container = document.getElementById(`harmony-${key}`);
+            const groupDiv = document.getElementById(`group-${key}`);
+            container.innerHTML = ''; container.appendChild(createColorBox(mainHex, true));
+            let schemeColors = [];
+            rules[key].forEach((degree, index) => {
+                let newH = (h + degree) % 360; if(newH < 0) newH += 360;
+                let activeL = (index === 0) ? fillL : strokeL; if(rules[key].length === 1) activeL = fillL;
+                const [newR, newG, newB] = hslToRgb(newH, safeS, activeL);
+                const hex = rgbToHex(newR, newG, newB);
+                container.appendChild(createColorBox(hex)); schemeColors.push(hex);
+            });
+            groupDiv.onclick = function() {
+                document.querySelectorAll('.harmony-group').forEach(el => el.classList.remove('active'));
+                this.classList.add('active'); updateMockup(mainHex, schemeColors); updateGradient(mainHex, schemeColors[0]);
+            };
+            if(key === 'ana') { groupDiv.classList.add('active'); updateMockup(mainHex, schemeColors); updateGradient(mainHex, schemeColors[0]); }
+        }
+    }
+
+    function updateMockup(bgHex, colors) {
+        mockupBox.style.setProperty('--mockup-bg', bgHex);
+        const textFill = colors[0] || '#ffffff'; mockupBox.style.setProperty('--mockup-text', textFill);
+        let textStroke = colors[1]; if(!textStroke) { textStroke = colors[0]; }
+        mockupBox.style.setProperty('--mockup-stroke', textStroke);
+    }
+
+    // --- Gradient ---
+    function updateGradient(color1, color2) {
+        if(!color2) color2 = color1;
+        const css = `linear-gradient(135deg, ${color1}, ${color2})`;
+        gradientPreview.style.background = css; currentGradientCSS = `background: ${css};`;
+    }
+    function copyGradient() { if(currentGradientCSS) copyText(currentGradientCSS); }
+
+    // --- Auto Palette ---
+    function generateAutoPaletteFromCanvas() {
+        const smCanvas = document.createElement('canvas'); const smCtx = smCanvas.getContext('2d');
+        smCanvas.width = 100; smCanvas.height = 100; 
+        smCtx.drawImage(mainCanvas, 0, 0, mainCanvas.width, mainCanvas.height, 0, 0, 100, 100);
+        
+        const data = smCtx.getImageData(0, 0, 100, 100).data; const colorCounts = {}; let totalValidPixels = 0; const quality = 10; 
+        for(let i=0; i<data.length; i+=4) {
+            if(data[i+3] < 128) continue; totalValidPixels++; 
+            const r = Math.floor(data[i]/quality)*quality; const g = Math.floor(data[i+1]/quality)*quality; const b = Math.floor(data[i+2]/quality)*quality;
+            const key = `${r},${g},${b}`; colorCounts[key] = (colorCounts[key]||0) + 1;
+        }
+        const sorted = Object.entries(colorCounts).sort((a,b)=>b[1]-a[1]).slice(0, 7);
+        paletteContainer.innerHTML = '';
+        sorted.forEach(([key]) => {
+            const [r,g,b] = key.split(',').map(Number); const hex = rgbToHex(r,g,b);
+            const percent = ((colorCounts[key] / totalValidPixels) * 100).toFixed(1);
+            const div = document.createElement('div'); div.className = 'color-card'; div.style.backgroundColor = `rgb(${r},${g},${b})`;
+            div.innerHTML = `<span class="pct-text">${percent}%</span><span class="hex-text">${hex}</span>`;
+            div.onclick = () => { 
+                copyText(hex); 
+                updateColorInfo(r,g,b,hex);
+                calculateHarmonies(r,g,b);
+                addToHistory(hex);
+            };
+            paletteContainer.appendChild(div);
+        });
+    }
+
+    // --- Download Card ---
+    function downloadPaletteCard() {
+        const boxes = document.querySelectorAll('#paletteContainer .color-card');
+        if(boxes.length === 0) { alert('請先上傳圖片'); return; }
+        const cardCanvas = document.createElement('canvas'); const ctx = cardCanvas.getContext('2d');
+        const width = 800; const height = 600; cardCanvas.width = width; cardCanvas.height = height;
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = '#333'; ctx.font = 'bold 30px sans-serif'; ctx.fillText('ChromaLab Palette', 40, 50);
+        const imgRatio = mainCanvas.width / mainCanvas.height;
+        let drawW = 400; let drawH = 400 / imgRatio; if(drawH > 450) { drawH = 450; drawW = 450 * imgRatio; }
+        const imgX = 40; const imgY = 80;
+        ctx.drawImage(mainCanvas, 0, 0, mainCanvas.width, mainCanvas.height, imgX, imgY, drawW, drawH);
+        ctx.strokeStyle = '#eee'; ctx.lineWidth = 2; ctx.strokeRect(imgX, imgY, drawW, drawH);
+        const startX = imgX + drawW + 40; let startY = 80; const boxHeight = 50; const boxWidth = 250;
+        boxes.forEach((box, i) => {
+            const hex = box.querySelector('.hex-text').innerText; const pct = box.querySelector('.pct-text').innerText; const color = box.style.backgroundColor;
+            ctx.fillStyle = color; ctx.fillRect(startX, startY, 60, boxHeight);
+            ctx.fillStyle = '#f8f9fa'; ctx.fillRect(startX + 60, startY, boxWidth - 60, boxHeight);
+            ctx.fillStyle = '#333'; ctx.font = 'bold 18px monospace'; ctx.fillText(hex, startX + 75, startY + 32);
+            ctx.fillStyle = '#666'; ctx.font = '14px sans-serif'; ctx.fillText(pct, startX + 180, startY + 32);
+            startY += boxHeight + 15;
+        });
+        ctx.fillStyle = '#999'; ctx.font = '14px sans-serif'; ctx.fillText('Generated by ChromaLab Pro', width - 240, height - 20);
+        const link = document.createElement('a'); link.download = 'chromalab-palette.jpg';
+        link.href = cardCanvas.toDataURL('image/jpeg', 0.9); link.click();
+    }
+
+    // --- Helpers ---
+    function createColorBox(hex, isMain = false) {
+        const box = document.createElement('div'); box.className = 'h-box'; box.style.backgroundColor = hex;
+        if(isMain) { box.style.border = "2px solid #333"; box.style.flex = "0 0 35px"; box.title = "主色"; }
+        box.onclick = (e) => { e.stopPropagation(); copyText(hex); }; return box;
+    }
+    function updateMagnifier(e, coords) {
+        magnifier.style.display = 'block';
+        const magX = e.pageX + 20; const magY = e.pageY + 20; magnifier.style.left = `${magX}px`; magnifier.style.top = `${magY}px`;
+        const size = 120; const zoom = 4; const srcSize = size/zoom;
+        magCtx.fillStyle = '#fff'; magCtx.fillRect(0,0,size,size);
+        magCtx.drawImage(mainCanvas, coords.x - srcSize/2, coords.y - srcSize/2, srcSize, srcSize, 0, 0, size, size);
+        magCtx.strokeStyle = 'rgba(255,0,0,0.5)'; magCtx.beginPath(); magCtx.moveTo(size/2,0); magCtx.lineTo(size/2,size); magCtx.moveTo(0,size/2); magCtx.lineTo(size,size/2); magCtx.stroke();
+    }
+    function copyText(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            const toast = document.createElement('div'); toast.innerText = `已複製 ${text}`;
+            toast.style.cssText = `position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.8); color:#fff; padding:8px 16px; border-radius:20px; z-index:999; font-size:0.9rem;`;
+            document.body.appendChild(toast); setTimeout(() => toast.remove(), 1500);
+        });
+    }
+    function exportCSS() {
+        const boxes = document.querySelectorAll('#paletteContainer .color-card');
+        if(boxes.length === 0) { alert('請先上傳圖片'); return; }
+        let css = ":root {\n"; boxes.forEach((box, i) => css += `    --color-${i + 1}: ${box.querySelector('.hex-text').innerText};\n`); css += "}";
+        copyText(css); alert('CSS 已複製到剪貼簿');
+    }
+    function getCanvasCoords(e) {
+        const rect = mainCanvas.getBoundingClientRect();
+        if(e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) return null;
+        return { x: Math.floor((e.clientX - rect.left) * (mainCanvas.width / rect.width)), y: Math.floor((e.clientY - rect.top) * (mainCanvas.height / rect.height)) };
+    }
+
+    // --- Color Math ---
+    function rgbToHex(r, g, b) { return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase(); }
+    function rgbToCmyk(r, g, b) { let c = 1 - (r/255), m = 1 - (g/255), y = 1 - (b/255), k = Math.min(c, m, y); c = (c-k)/(1-k)||0; m = (m-k)/(1-k)||0; y = (y-k)/(1-k)||0; return { c:Math.round(c*100), m:Math.round(m*100), y:Math.round(y*100), k:Math.round(k*100) }; }
+    function rgbToHsl(r, g, b) { r /= 255; g /= 255; b /= 255; const max = Math.max(r, g, b), min = Math.min(r, g, b); let h, s, l = (max + min) / 2; if (max === min) h = s = 0; else { const d = max - min; s = l > 0.5 ? d / (2 - max - min) : d / (max + min); switch (max) { case r: h = (g - b) / d + (g < b ? 6 : 0); break; case g: h = (b - r) / d + 2; break; case b: h = (r - g) / d + 4; break; } h *= 60; } return [h, s, l]; }
+    function hslToRgb(h, s, l) { let r, g, b; if (s === 0) r = g = b = l; else { const hue2rgb = (p, q, t) => { if (t < 0) t += 1; if (t > 1) t -= 1; if (t < 1/6) return p + (q - p) * 6 * t; if (t < 1/2) return q; if (t < 2/3) return p + (q - p) * (2/3 - t) * 6; return p; }; const q = l < 0.5 ? l * (1 + s) : l + s - l * s; const p = 2 * l - q; r = hue2rgb(p, q, h/360 + 1/3); g = hue2rgb(p, q, h/360); b = hue2rgb(p, q, h/360 - 1/3); } return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)]; }
+    function rgbToOklch(r, g, b) { const toLinear = (c) => { const v = c / 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; const lr = toLinear(r), lg = toLinear(g), lb = toLinear(b); const l = 0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb; const m = 0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb; const s = 0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb; const l_ = Math.cbrt(l), m_ = Math.cbrt(m), s_ = Math.cbrt(s); const L = 0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_; const a = 1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_; const b_ = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_; const C = Math.sqrt(a * a + b_ * b_); let H = Math.atan2(b_, a) * (180 / Math.PI); if (H < 0) H += 360; return `${(L * 100).toFixed(1)}% ${C.toFixed(3)} ${H.toFixed(1)}`; }
+</script>
+</body>
+</html>
